@@ -10,12 +10,12 @@ Principles:
 - Compiles down to a self-contained HTML file that can be hosted on IPFS
 - Doesn't depend on external RPC providers or any other services
 
-Supported features:
+Supported features (work-in-progress):
 
-- Basic wallet connection (via injected EIP-1193), no WalletConnect or other methods
-- Painting on today's canvas
-- Minting the previous day's canvas
-- Withdrawing earnings
+- [x] Basic wallet connection (via injected EIP-1193)
+- [x] Painting on today's canvas
+- [ ] Minting the previous day's canvas
+- [ ] Withdrawing earnings
 
 Out of scope:
 
