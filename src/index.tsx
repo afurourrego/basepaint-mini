@@ -1,6 +1,6 @@
 import "./style.css";
 import { render } from "preact";
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { parseAbi } from "viem";
 import { Address } from "viem";
 import Canvas from "./Canvas";
@@ -167,8 +167,21 @@ function usePaintedPixels(day: number) {
   return oldEvents ? pixels : null;
 }
 
-function useAddress() {
-  return usePromise(() => client.getAddresses().then((all) => all[0]), []);
+function useWallet() {
+  const [address, setAddress] = useState<Address | null>(null);
+  const connect = useCallback(() => {
+    client
+      .requestAddresses()
+      .then((addresses) => addresses.length > 0 && setAddress(addresses[0]));
+  }, []);
+
+  useEffect(() => {
+    client
+      .getAddresses()
+      .then((addresses) => addresses.length > 0 && setAddress(addresses[0]));
+  }, []);
+
+  return { address, connect };
 }
 
 function useTheme(day: number) {
@@ -180,9 +193,13 @@ function useBrushes(address: Address) {
 }
 
 export function App() {
-  const address = useAddress();
+  const { address, connect } = useWallet();
   if (!address) {
-    return <Loading what="address" />;
+    return (
+      <div className="fullscreen">
+        <Button onClick={connect}>Connect Wallet</Button>
+      </div>
+    );
   }
 
   const today = useToday();
@@ -219,8 +236,22 @@ export function App() {
   );
 }
 
+function Button({
+  onClick,
+  children,
+}: {
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button className="big" onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
 function Loading({ what }: { what: string }) {
-  return <div className="loading">Loading {what}…</div>;
+  return <div className="fullscreen">Loading {what}…</div>;
 }
 
 render(<App />, document.getElementById("app")!);

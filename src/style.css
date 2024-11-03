@@ -52,9 +52,16 @@ body {
 	overflow: auto;
 }
 
-.loading {
+.fullscreen {
 	display: flex;
+	flex-direction: column;
 	justify-content: center;
 	align-items: center;
 	height: 100vh;
+}
+
+button.big {
+	padding: 1rem;
+	font-size: 1.5rem;
+	cursor: pointer;
 }
