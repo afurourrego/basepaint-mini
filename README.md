@@ -1,15 +1,34 @@
-# `create-preact`
+# BasePaint Mini
 
-<h2 align="center">
-  <img height="256" width="256" src="./src/assets/preact.svg">
-</h2>
+> [!WARNING]
+> Work in progress, not everything is working yet
 
-<h3 align="center">Get started using Preact and Vite!</h3>
+Minimalistic implementation of [BasePaint](https://basepaint.xyz/) dApp.
+
+Principles:
+
+- Compiles down to a self-contained HTML file that can be hosted on IPFS
+- Doesn't depend on external RPC providers or any other services
+
+Supported features:
+
+- Basic wallet connection (via injected EIP-1193), no WalletConnect or other methods
+- Painting on today's canvas
+- Minting the previous day's canvas
+- Withdrawing earnings
+
+Out of scope:
+
+- Minting brushes
+- Browsing previous days
+- Theme voting
+- Chat, live cursors, WIP
+- Animations
 
 ## Getting Started
 
--   `npm run dev` - Starts a dev server at http://localhost:5173/
+- `npm run dev` - Starts a dev server at http://localhost:5173/
 
--   `npm run build` - Builds for production, emitting to `dist/`
+- `npm run build` - Builds for production, emitting to `dist/`
 
--   `npm run preview` - Starts a server at http://localhost:4173/ to test production build locally
+- `npm run preview` - Starts a server at http://localhost:4173/ to test production build locally
