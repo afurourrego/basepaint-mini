@@ -60,6 +60,20 @@ body {
 	height: 100vh;
 }
 
+.menu {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	align-items: stretch;
+	width: 320px;
+	max-width: 100%;
+}
+
+.price {
+	display: flex;
+	justify-content: space-between;
+}
+
 button.big {
 	padding: 1rem;
 	font-size: 1.5rem;

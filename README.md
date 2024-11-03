@@ -14,7 +14,7 @@ Supported features (work-in-progress):
 
 - [x] Basic wallet connection (via injected EIP-1193)
 - [x] Painting on today's canvas
-- [ ] Minting the previous day's canvas
+- [x] Minting the previous day's canvas
 - [ ] Withdrawing earnings
 
 Out of scope:

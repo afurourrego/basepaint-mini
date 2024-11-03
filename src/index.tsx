@@ -10,6 +10,9 @@ import {
   client,
   publicClient,
 } from "./chain";
+import Withdraw from "./Withdraw";
+import Mint from "./Mint";
+import Button from "./Button";
 
 function useNow() {
   const [now, setNow] = useState(() => Date.now());
@@ -192,6 +195,18 @@ function useBrushes(address: Address) {
   return usePromise(() => fetchBrushes(address), [address]);
 }
 
+function usePrice() {
+  return usePromise(
+    () =>
+      publicClient.readContract({
+        abi: parseAbi(["function openEditionPrice() view returns (uint256)"]),
+        functionName: "openEditionPrice",
+        address: BASEPAINT_ADDRESS,
+      }),
+    []
+  );
+}
+
 export function App() {
   const { address, connect } = useWallet();
   if (!address) {
@@ -202,15 +217,59 @@ export function App() {
     );
   }
 
+  const [ui, setUI] = useState<"paint" | "mint" | "withdraw" | null>(null);
+
+  if (!ui) {
+    return (
+      <div className="fullscreen">
+        <div className="menu">
+          <Button onClick={() => setUI("paint")}>Paint</Button>
+          <Button onClick={() => setUI("mint")}>Mint</Button>
+          <Button onClick={() => setUI("withdraw")}>Withdraw</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (ui === "withdraw") {
+    return <Withdraw address={address} />;
+  }
+
   const today = useToday();
 
   if (!today) {
     return <Loading what="today" />;
   }
 
-  const theme = useTheme(today);
+  let day = ui === "mint" ? today - 1 : today;
+
+  const theme = useTheme(day);
   if (!theme) {
     return <Loading what="theme" />;
+  }
+
+  const pixels = usePaintedPixels(day);
+  if (pixels === null) {
+    return <Loading what="pixels" />;
+  }
+
+  if (ui === "mint") {
+    const price = usePrice();
+    if (!price) {
+      return <Loading what="price" />;
+    }
+
+    return (
+      <Mint
+        address={address}
+        day={day}
+        theme={theme.theme}
+        palette={theme.palette}
+        size={theme.size}
+        pixels={pixels}
+        price={price}
+      />
+    );
   }
 
   const brushes = useBrushes(address);
@@ -218,35 +277,16 @@ export function App() {
     return <Loading what="brushes" />;
   }
 
-  const pixels = usePaintedPixels(today);
-  if (pixels === null) {
-    return <Loading what="pixels" />;
-  }
-
   return (
     <Canvas
       address={address}
       brushes={brushes}
-      day={today}
+      day={day}
       theme={theme.theme}
       palette={theme.palette}
       size={theme.size}
       pixels={pixels}
     />
-  );
-}
-
-function Button({
-  onClick,
-  children,
-}: {
-  onClick: () => void;
-  children: string;
-}) {
-  return (
-    <button className="big" onClick={onClick}>
-      {children}
-    </button>
   );
 }
 

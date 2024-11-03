@@ -63,16 +63,16 @@ function Canvas({
     ctx.fillStyle = palette[0];
     ctx.fillRect(0, 0, size * PIXEL_SIZE, size * PIXEL_SIZE);
 
-    ctx.beginPath();
-    ctx.strokeStyle = "rgba(0,0,0,0.3)";
-    ctx.lineWidth = 1;
-
     for (const { x, y, color } of background) {
       if (palette[color]) {
         ctx.fillStyle = palette[color];
         ctx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
       }
     }
+
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(0,0,0,0.3)";
+    ctx.lineWidth = 1;
 
     for (let x = 0; x <= size; x++) {
       ctx.moveTo(x * PIXEL_SIZE, 0);
@@ -90,7 +90,7 @@ function Canvas({
         ctx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
       }
     }
-  }, [pixels, palette, PIXEL_SIZE, size, state.pixels]);
+  }, [background, palette, PIXEL_SIZE, size, state.pixels]);
 
   const locate = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
