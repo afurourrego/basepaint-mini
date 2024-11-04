@@ -231,14 +231,13 @@ export function App() {
     );
   }
 
-  if (ui === "withdraw") {
-    return <Withdraw address={address} />;
-  }
-
   const today = useToday();
-
   if (!today) {
     return <Loading what="today" />;
+  }
+
+  if (ui === "withdraw") {
+    return <Withdraw today={today} address={address} />;
   }
 
   let day = ui === "mint" ? today - 1 : today;
