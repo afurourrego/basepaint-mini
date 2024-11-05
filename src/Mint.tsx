@@ -71,6 +71,19 @@ export default function Mint({
         <div>
           Day {day}: {theme}
         </div>
+        <div>
+          {palette.map((color, i) => (
+            <div
+              key={i}
+              style={{
+                backgroundColor: color,
+                width: 20,
+                height: 20,
+                display: "inline-block",
+              }}
+            />
+          ))}
+        </div>
         <canvas
           ref={canvasRef}
           width={size * PIXEL_SIZE}
