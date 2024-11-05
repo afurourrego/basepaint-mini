@@ -15,7 +15,4 @@ export const client = createWalletClient({
   transport: custom((window as any).ethereum),
 }).extend(publicActions);
 
-export const publicClient = createPublicClient({
-  chain: base,
-  transport: http(import.meta.env.VITE_PROVIDER_URL!),
-});
+export const publicClient = client;

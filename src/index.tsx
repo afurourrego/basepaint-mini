@@ -122,52 +122,95 @@ function useToday() {
   );
 }
 
-function usePaintedPixels(day: number) {
-  const oldEvents = usePromise(
-    () =>
-      publicClient
-        .getContractEvents({
-          abi: parseAbi([
-            "event Painted(uint256 indexed day, uint256 tokenId, address author, bytes pixels)",
-          ]),
-          address: BASEPAINT_ADDRESS,
-          eventName: "Painted",
-          args: { day: BigInt(day) },
-          strict: true,
-          fromBlock: 0n,
-        })
-        .then((logs) => logs.map((l) => l.args)),
-    [day]
-  );
+async function getStrokesFromLogs(
+  day: number,
+  onNewPixels: (pixels: string) => void,
+  ac: AbortController
+) {
+  let latestBlock = await client.getBlockNumber();
+  let logs: { day: number; pixels: string }[] = [];
+  const BATCH_SIZE = 10_000n;
+  for (let toBlock = latestBlock; toBlock > BATCH_SIZE; toBlock -= BATCH_SIZE) {
+    const fromBlock = toBlock - BATCH_SIZE + 1n;
+    console.log("Fetching logs from Ethereum", { fromBlock, toBlock });
 
-  const [newEvents, setNewEvents] = useState<typeof oldEvents>([]);
-
-  useEffect(() => {
-    const unwatch = publicClient.watchContractEvent({
-      abi: parseAbi([
-        "event Painted(uint256 indexed day, uint256 tokenId, address author, bytes pixels)",
-      ]),
+    const batchLogs = await client.getLogs({
       address: BASEPAINT_ADDRESS,
-      eventName: "Painted",
+      event: parseAbiItem(
+        "event Painted(uint256 indexed day, uint256 tokenId, address author, bytes pixels)"
+      ),
+      fromBlock,
+      toBlock,
       strict: true,
-      args: { day: BigInt(day) },
-      onLogs: (logs) =>
-        setNewEvents((prev) => [...prev!, ...logs!.map((l) => l.args)]),
     });
 
-    return unwatch;
-  }, [day]);
+    logs = [
+      ...batchLogs.map((log) => ({
+        day: Number(log.args.day),
+        pixels: log.args.pixels,
+      })),
+      ...logs,
+    ];
 
-  const allEvents = useMemo(
-    () => [...(oldEvents ?? []), ...(newEvents ?? [])],
-    [oldEvents, newEvents]
-  );
-  const pixels = useMemo(
-    () => allEvents.map((e) => e.pixels.replace(/^0x/, "")).join(""),
-    [allEvents]
-  );
+    if (logs[0].day < day) {
+      break;
+    }
+  }
 
-  return oldEvents ? pixels : null;
+  async function poll() {
+    const fromBlock = latestBlock + 1n;
+    const toBlock = await client.getBlockNumber();
+    console.log("Polling logs from Ethereum", { fromBlock, toBlock });
+
+    const batchLogs = await client.getLogs({
+      address: BASEPAINT_ADDRESS,
+      event: parseAbiItem(
+        "event Painted(uint256 indexed day, uint256 tokenId, address author, bytes pixels)"
+      ),
+      args: { day: BigInt(day) },
+      fromBlock,
+      toBlock,
+      strict: true,
+    });
+    console.log(`Got ${batchLogs.length} new logs`);
+
+    latestBlock = toBlock;
+    const pixels = batchLogs
+      .map((log) => log.args.pixels.replace(/^0x/, ""))
+      .join("");
+    onNewPixels(pixels);
+  }
+
+  let interval = setInterval(() => {
+    if (ac.signal.aborted) {
+      clearInterval(interval);
+    } else {
+      poll();
+    }
+  }, 15_000);
+
+  return logs
+    .filter((log) => log.day === day)
+    .map((log) => log.pixels.replace(/^0x/, ""))
+    .join("");
+}
+
+function usePaintedPixels(day: number) {
+  const [pixels, setPixels] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ac = new AbortController();
+
+    getStrokesFromLogs(
+      day,
+      (morePixels) => setPixels((old) => old + morePixels),
+      ac
+    ).then(setPixels);
+
+    return () => ac.abort();
+  }, []);
+
+  return pixels;
 }
 
 function useWallet() {

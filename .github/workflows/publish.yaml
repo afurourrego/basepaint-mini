@@ -39,8 +39,6 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
-        env:
-          VITE_PROVIDER_URL: ${{ secrets.VITE_PROVIDER_URL }}
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
