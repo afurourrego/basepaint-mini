@@ -35,10 +35,15 @@ function Canvas({
   const background = useMemo(() => Pixels.fromString(pixels), [pixels]);
 
   async function save() {
-    if (brushes.length === 0) {
-      alert("Sorry, you don't have a brush");
+    const response = prompt(
+      "What brush token ID do you want to use?",
+      brushes[0]?.id.toString() ?? "0"
+    );
+    if (!response) {
       return;
     }
+
+    const brushId = BigInt(response);
 
     client.writeContract({
       account: address,
@@ -48,7 +53,7 @@ function Canvas({
       ]),
       functionName: "paint",
       address: BASEPAINT_ADDRESS,
-      args: [BigInt(day), brushes[0].id, `0x${state.pixels}`],
+      args: [BigInt(day), brushId, `0x${state.pixels}`],
     });
   }
 

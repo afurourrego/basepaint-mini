@@ -315,14 +315,11 @@ export function App() {
   }
 
   const brushes = useBrushes(address);
-  if (!brushes) {
-    return <Loading what="brushes" />;
-  }
 
   return (
     <Canvas
       address={address}
-      brushes={brushes}
+      brushes={brushes ?? []}
       day={day}
       theme={theme.theme}
       palette={theme.palette}
