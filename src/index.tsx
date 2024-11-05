@@ -1,18 +1,45 @@
 import "./style.css";
 import { render } from "preact";
-import { useCallback, useEffect, useState } from "preact/hooks";
-import { parseAbi, parseAbiItem } from "viem";
+import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import {
+  createWalletClient,
+  custom,
+  parseAbi,
+  parseAbiItem,
+  publicActions,
+} from "viem";
 import { Address } from "viem";
 import Canvas from "./Canvas";
 import {
   BASEPAINT_ADDRESS,
   BRUSH_ADDRESS,
-  client,
   METADATA_ADDRESS,
-} from "./chain";
+} from "./constants";
 import Withdraw from "./Withdraw";
 import Mint from "./Mint";
 import Button from "./Button";
+import { base } from "viem/chains";
+
+export type Client = NonNullable<ReturnType<typeof useClient>>;
+
+function useClient() {
+  const [ethereum] = useState(() => (window as any).ethereum);
+
+  if (!ethereum) {
+    return null;
+  }
+
+  const client = useMemo(
+    () =>
+      createWalletClient({
+        chain: base,
+        transport: custom(ethereum),
+      }).extend(publicActions),
+    [ethereum]
+  );
+
+  return client;
+}
 
 function useNow() {
   const [now, setNow] = useState(() => Date.now());
@@ -43,7 +70,7 @@ function usePromise<T>(promise: () => Promise<T>, deps: any[] = []): T | null {
   return value;
 }
 
-async function initialFetch() {
+async function initialFetch(client: Client) {
   const [startedAt, epochDuration] = await Promise.all([
     client.readContract({
       abi: parseAbi(["function startedAt() view returns (uint256)"]),
@@ -68,7 +95,7 @@ async function fetchThemeFromBasepaint(day: number) {
   };
 }
 
-async function fetchThemeFromBlockchain(day: number) {
+async function fetchThemeFromBlockchain(client: Client, day: number) {
   const metadata = await client.readContract({
     address: METADATA_ADDRESS,
     abi: parseAbi([
@@ -91,7 +118,7 @@ async function fetchThemeFromBlockchain(day: number) {
   };
 }
 
-async function fetchBrushes(address: Address) {
+async function fetchBrushes(client: Client, address: Address) {
   const events = await client.getContractEvents({
     abi: parseAbi([
       "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
@@ -132,9 +159,9 @@ async function fetchBrushes(address: Address) {
     .sort((a, b) => Number(b.strength - a.strength));
 }
 
-function useToday() {
+function useToday(client: Client) {
   const now = useNow();
-  const info = usePromise(initialFetch, []);
+  const info = usePromise(() => initialFetch(client), [client]);
 
   if (!info) {
     return null;
@@ -146,6 +173,7 @@ function useToday() {
 }
 
 async function getStrokesFromLogs(
+  client: Client,
   day: number,
   onNewPixels: (pixels: string) => void,
   ac: AbortController
@@ -218,68 +246,77 @@ async function getStrokesFromLogs(
     .join("");
 }
 
-function usePaintedPixels(day: number) {
+function usePaintedPixels(client: Client, day: number) {
   const [pixels, setPixels] = useState<string | null>(null);
 
   useEffect(() => {
     const ac = new AbortController();
 
     getStrokesFromLogs(
+      client,
       day,
       (morePixels) => setPixels((old) => old + morePixels),
       ac
     ).then(setPixels);
 
     return () => ac.abort();
-  }, []);
+  }, [client]);
 
   return pixels;
 }
 
-function useWallet() {
+function useWallet(client: Client) {
   const [address, setAddress] = useState<Address | null>(null);
   const connect = useCallback(() => {
     client
       .requestAddresses()
       .then((addresses) => addresses.length > 0 && setAddress(addresses[0]));
-  }, []);
+  }, [client]);
 
   useEffect(() => {
     client
       .getAddresses()
       .then((addresses) => addresses.length > 0 && setAddress(addresses[0]));
-  }, []);
+  }, [client]);
 
   return { address, connect };
 }
 
-function useCurrentChainId() {
+function useCurrentChainId(client: Client) {
   const [currentChainId, setCurrentChainId] = useState<number | null>(null);
 
   useEffect(() => {
     client.getChainId().then(setCurrentChainId);
-  }, []);
+  }, [client]);
 
-  const switchChain = useCallback((id: number) => {
-    client.switchChain({ id }).then(() => setCurrentChainId(id));
-  }, []);
+  const switchChain = useCallback(
+    (id: number) => {
+      client.switchChain({ id }).then(() => setCurrentChainId(id));
+    },
+    [client]
+  );
 
   return { currentChainId, switchChain };
 }
 
-function useTheme(day: number) {
+function useTheme(client: Client, day: number) {
   return usePromise(
     () =>
-      fetchThemeFromBlockchain(day).catch(() => fetchThemeFromBasepaint(day)),
+      fetchThemeFromBlockchain(client, day).catch(() =>
+        fetchThemeFromBasepaint(day)
+      ),
     [day]
   );
 }
 
-function useBrushes(address: Address) {
-  return usePromise(() => fetchBrushes(address).catch(() => []), [address]);
+function useBrushes(client: Client, address: Address) {
+  return usePromise(
+    () => fetchBrushes(client, address).catch(() => []),
+    [address]
+  );
 }
 
-function usePrice() {
+function usePrice(client: Client) {
   return usePromise(
     () =>
       client.readContract({
@@ -292,7 +329,16 @@ function usePrice() {
 }
 
 export function App() {
-  const { address, connect } = useWallet();
+  const client = useClient();
+  if (!client) {
+    return (
+      <div className="fullscreen">
+        Please install MetaMask or similar Ethereum wallet extension.
+      </div>
+    );
+  }
+
+  const { address, connect } = useWallet(client);
   if (!address) {
     return (
       <div className="fullscreen">
@@ -303,7 +349,7 @@ export function App() {
     );
   }
 
-  const { currentChainId, switchChain } = useCurrentChainId();
+  const { currentChainId, switchChain } = useCurrentChainId(client);
   if (currentChainId !== client.chain.id) {
     return (
       <div className="fullscreen">
@@ -330,35 +376,36 @@ export function App() {
     );
   }
 
-  const today = useToday();
+  const today = useToday(client);
   if (!today) {
     return <Loading what="today" />;
   }
 
   if (ui === "withdraw") {
-    return <Withdraw today={today} address={address} />;
+    return <Withdraw client={client} today={today} address={address} />;
   }
 
   let day = ui === "mint" ? today - 1 : today;
 
-  const theme = useTheme(day);
+  const theme = useTheme(client, day);
   if (!theme) {
     return <Loading what="theme" />;
   }
 
-  const pixels = usePaintedPixels(day);
+  const pixels = usePaintedPixels(client, day);
   if (pixels === null) {
     return <Loading what="pixels" />;
   }
 
   if (ui === "mint") {
-    const price = usePrice();
+    const price = usePrice(client);
     if (!price) {
       return <Loading what="price" />;
     }
 
     return (
       <Mint
+        client={client}
         address={address}
         day={day}
         theme={theme.theme}
@@ -370,10 +417,11 @@ export function App() {
     );
   }
 
-  const brushes = useBrushes(address);
+  const brushes = useBrushes(client, address);
 
   return (
     <Canvas
+      client={client}
       address={address}
       brushes={brushes ?? []}
       day={day}

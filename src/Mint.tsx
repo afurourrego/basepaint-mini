@@ -2,9 +2,11 @@ import { useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import Pixels from "./pixels";
 import Button from "./Button";
 import { Address, formatEther, parseAbi } from "viem";
-import { BASEPAINT_ADDRESS, client } from "./chain";
+import { BASEPAINT_ADDRESS } from "./constants";
+import { Client } from ".";
 
 export default function Mint({
+  client,
   address,
   day,
   theme,
@@ -13,6 +15,7 @@ export default function Mint({
   pixels,
   price,
 }: {
+  client: Client;
   address: Address;
   day: number;
   theme: string;

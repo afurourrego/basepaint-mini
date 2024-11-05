@@ -7,10 +7,12 @@ import {
   MagnifyingGlassPlus,
   Trash,
 } from "./icons";
-import { BASEPAINT_ADDRESS, client } from "./chain";
+import { BASEPAINT_ADDRESS } from "./constants";
 import { Address, parseAbi } from "viem";
+import { Client } from ".";
 
 function Canvas({
+  client,
   day,
   theme,
   palette,
@@ -19,6 +21,7 @@ function Canvas({
   address,
   brushes,
 }: {
+  client: Client;
   day: number;
   theme: string;
   palette: string[];

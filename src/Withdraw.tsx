@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { BASEPAINT_ADDRESS, client } from "./chain";
+import { BASEPAINT_ADDRESS } from "./constants";
 import { Address, formatEther, parseAbi } from "viem";
 import { keccak256, toHex } from "viem";
 import Button from "./Button";
+import { Client } from ".";
 
-async function getEarningsForDay(address: Address, day: number) {
+async function getEarningsForDay(
+  client: Client,
+  address: Address,
+  day: number
+) {
   const slot = getSlot(day, address);
   const result = await client.getStorageAt({
     address: BASEPAINT_ADDRESS,
@@ -28,9 +33,11 @@ function getSlot(day: number, address: Address) {
 }
 
 export default function Withdraw({
+  client,
   today,
   address,
 }: {
+  client: Client;
   today: number;
   address: Address;
 }) {
@@ -42,7 +49,7 @@ export default function Withdraw({
     async function findDays() {
       for (let day = today - 2; day > 0; day--) {
         if (stop.current) return;
-        const earnings = await getEarningsForDay(address, day);
+        const earnings = await getEarningsForDay(client, address, day);
 
         if (earnings > 0n) {
           setUnclaimedDays((days) => [...days, day]);
@@ -60,7 +67,7 @@ export default function Withdraw({
     findDays();
 
     return () => (stop.current = true);
-  }, []);
+  }, [client, address, today]);
 
   async function withdraw() {
     stop.current = true;
