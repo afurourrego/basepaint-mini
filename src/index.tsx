@@ -1,18 +1,26 @@
 import "./style.css";
 import { render } from "preact";
-import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
-import { parseAbi } from "viem";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/hooks";
+import { parseAbi, parseAbiItem } from "viem";
 import { Address } from "viem";
 import Canvas from "./Canvas";
 import {
   BASEPAINT_ADDRESS,
   BRUSH_ADDRESS,
   client,
+  METADATA_ADDRESS,
   publicClient,
 } from "./chain";
 import Withdraw from "./Withdraw";
 import Mint from "./Mint";
 import Button from "./Button";
+import { base } from "viem/chains";
 
 function useNow() {
   const [now, setNow] = useState(() => Date.now());
@@ -59,12 +67,35 @@ async function initialFetch() {
   return { startedAt, epochDuration };
 }
 
-async function fetchTheme(day: number) {
+async function fetchThemeFromBasepaint(day: number) {
   const request = await fetch(`https://basepaint.xyz/api/theme/${day}`);
   return (await request.json()) as {
     theme: string;
     palette: string[];
     size: number;
+  };
+}
+
+async function fetchThemeFromBlockchain(day: number) {
+  const metadata = await publicClient.readContract({
+    address: METADATA_ADDRESS,
+    abi: parseAbi([
+      "function getMetadata(uint256 id) public view returns ((string name, uint24[] palette, uint96 size, address proposer))",
+    ]),
+    functionName: "getMetadata",
+    args: [BigInt(day)],
+  });
+
+  if (!metadata.name) {
+    throw new Error(`No theme found for day ${day} onchain`);
+  }
+
+  return {
+    theme: metadata.name,
+    palette: metadata.palette.map(
+      (color) => `#${color.toString(16).padStart(6, "0")}`
+    ),
+    size: Number(metadata.size),
   };
 }
 
@@ -245,11 +276,15 @@ function useCurrentChainId() {
 }
 
 function useTheme(day: number) {
-  return usePromise(() => fetchTheme(day), [day]);
+  return usePromise(
+    () =>
+      fetchThemeFromBlockchain(day).catch(() => fetchThemeFromBasepaint(day)),
+    [day]
+  );
 }
 
 function useBrushes(address: Address) {
-  return usePromise(() => fetchBrushes(address), [address]);
+  return usePromise(() => fetchBrushes(address).catch(() => []), [address]);
 }
 
 function usePrice() {
