@@ -10,6 +10,10 @@ body {
 	background-color: #222;
 }
 
+a {
+	color: #0042DF;
+}
+
 .toolbar {
 	display: flex;
 	justify-content: space-between;
@@ -38,6 +42,10 @@ body {
 .color-button {
 	display: inline-block;
 	border-width: 3px;
+}
+
+.hero {
+	text-align: center;
 }
 
 .main {

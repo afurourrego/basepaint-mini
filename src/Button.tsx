@@ -3,7 +3,7 @@ export default function Button({
   children,
 }: {
   onClick: () => void;
-  children: string;
+  children: React.ReactNode;
 }) {
   return (
     <button className="big" onClick={onClick}>
