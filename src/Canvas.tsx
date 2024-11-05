@@ -9,7 +9,6 @@ import {
 } from "./icons";
 import { BASEPAINT_ADDRESS, client } from "./chain";
 import { Address, parseAbi } from "viem";
-import { base } from "viem/chains";
 
 function Canvas({
   day,
@@ -35,6 +34,11 @@ function Canvas({
   const background = useMemo(() => Pixels.fromString(pixels), [pixels]);
 
   async function save() {
+    const chainId = await client.getChainId();
+    if (chainId !== client.chain.id) {
+      await client.switchChain(client.chain);
+    }
+
     const response = prompt(
       "What brush token ID do you want to use?",
       brushes[0]?.id.toString() ?? "0"
@@ -47,7 +51,6 @@ function Canvas({
 
     client.writeContract({
       account: address,
-      chain: base,
       abi: parseAbi([
         "function paint(uint256 day, uint256 tokenId, bytes calldata pixels)",
       ]),

@@ -3,7 +3,6 @@ import { BASEPAINT_ADDRESS, client } from "./chain";
 import { Address, formatEther, parseAbi } from "viem";
 import { keccak256, toHex } from "viem";
 import Button from "./Button";
-import { base } from "viem/chains";
 
 async function getEarningsForDay(address: Address, day: number) {
   const slot = getSlot(day, address);
@@ -65,6 +64,10 @@ export default function Withdraw({
 
   async function withdraw() {
     stop.current = true;
+    const chainId = await client.getChainId();
+    if (chainId !== client.chain.id) {
+      await client.switchChain(client.chain);
+    }
 
     if (!unclaimedDays.length) {
       alert("No unclaimed days found");
@@ -73,7 +76,6 @@ export default function Withdraw({
 
     await client.writeContract({
       account: address,
-      chain: base,
       address: BASEPAINT_ADDRESS,
       functionName: "authorWithdraw",
       abi: parseAbi(["function authorWithdraw(uint256[] calldata indexes)"]),

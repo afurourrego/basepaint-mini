@@ -3,7 +3,6 @@ import Pixels from "./pixels";
 import Button from "./Button";
 import { Address, formatEther, parseAbi } from "viem";
 import { BASEPAINT_ADDRESS, client } from "./chain";
-import { base } from "viem/chains";
 
 export default function Mint({
   address,
@@ -29,13 +28,12 @@ export default function Mint({
 
   async function mint() {
     const chainId = await client.getChainId();
-    if (chainId !== base.id) {
-      await client.switchChain(base);
+    if (chainId !== client.chain.id) {
+      await client.switchChain(client.chain);
     }
 
     await client.writeContract({
       account: address,
-      chain: base,
       abi: parseAbi([
         "function mint(uint256 day, uint256 count) public payable",
       ]),

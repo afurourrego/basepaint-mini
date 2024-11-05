@@ -1,12 +1,6 @@
 import "./style.css";
 import { render } from "preact";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
 import { parseAbi, parseAbiItem } from "viem";
 import { Address } from "viem";
 import Canvas from "./Canvas";
@@ -15,12 +9,10 @@ import {
   BRUSH_ADDRESS,
   client,
   METADATA_ADDRESS,
-  publicClient,
 } from "./chain";
 import Withdraw from "./Withdraw";
 import Mint from "./Mint";
 import Button from "./Button";
-import { base } from "viem/chains";
 
 function useNow() {
   const [now, setNow] = useState(() => Date.now());
@@ -53,12 +45,12 @@ function usePromise<T>(promise: () => Promise<T>, deps: any[] = []): T | null {
 
 async function initialFetch() {
   const [startedAt, epochDuration] = await Promise.all([
-    publicClient.readContract({
+    client.readContract({
       abi: parseAbi(["function startedAt() view returns (uint256)"]),
       functionName: "startedAt",
       address: BASEPAINT_ADDRESS,
     }),
-    publicClient.readContract({
+    client.readContract({
       abi: parseAbi(["function epochDuration() view returns (uint256)"]),
       functionName: "epochDuration",
       address: BASEPAINT_ADDRESS,
@@ -77,7 +69,7 @@ async function fetchThemeFromBasepaint(day: number) {
 }
 
 async function fetchThemeFromBlockchain(day: number) {
-  const metadata = await publicClient.readContract({
+  const metadata = await client.readContract({
     address: METADATA_ADDRESS,
     abi: parseAbi([
       "function getMetadata(uint256 id) public view returns ((string name, uint24[] palette, uint96 size, address proposer))",
@@ -100,7 +92,7 @@ async function fetchThemeFromBlockchain(day: number) {
 }
 
 async function fetchBrushes(address: Address) {
-  const events = await publicClient.getContractEvents({
+  const events = await client.getContractEvents({
     abi: parseAbi([
       "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
     ]),
@@ -114,7 +106,7 @@ async function fetchBrushes(address: Address) {
   const tokenIds = events.map((e) => e.args.tokenId);
   const owners = await Promise.all(
     tokenIds.map((id) =>
-      publicClient.readContract({
+      client.readContract({
         abi: parseAbi(["function ownerOf(uint256) view returns (address)"]),
         functionName: "ownerOf",
         address: BRUSH_ADDRESS,
@@ -126,7 +118,7 @@ async function fetchBrushes(address: Address) {
   const ownedTokenIds = tokenIds.filter((_, i) => owners[i] === address);
   const strengths = await Promise.all(
     ownedTokenIds.map((id) =>
-      publicClient.readContract({
+      client.readContract({
         abi: parseAbi(["function strengths(uint256) view returns (uint256)"]),
         functionName: "strengths",
         address: BRUSH_ADDRESS,
@@ -262,17 +254,17 @@ function useWallet() {
 }
 
 function useCurrentChainId() {
-  const [chain, setChain] = useState<number | null>(null);
+  const [currentChainId, setCurrentChainId] = useState<number | null>(null);
 
   useEffect(() => {
-    client.getChainId().then(setChain);
+    client.getChainId().then(setCurrentChainId);
   }, []);
 
   const switchChain = useCallback((id: number) => {
-    client.switchChain({ id }).then(() => setChain(id));
+    client.switchChain({ id }).then(() => setCurrentChainId(id));
   }, []);
 
-  return { chain, switchChain };
+  return { currentChainId, switchChain };
 }
 
 function useTheme(day: number) {
@@ -290,7 +282,7 @@ function useBrushes(address: Address) {
 function usePrice() {
   return usePromise(
     () =>
-      publicClient.readContract({
+      client.readContract({
         abi: parseAbi(["function openEditionPrice() view returns (uint256)"]),
         functionName: "openEditionPrice",
         address: BASEPAINT_ADDRESS,
@@ -311,12 +303,14 @@ export function App() {
     );
   }
 
-  const { chain, switchChain } = useCurrentChainId();
-  if (chain !== base.id) {
+  const { currentChainId, switchChain } = useCurrentChainId();
+  if (currentChainId !== client.chain.id) {
     return (
       <div className="fullscreen">
         <div className="menu">
-          <Button onClick={() => switchChain(base.id)}>Switch to Base</Button>
+          <Button onClick={() => switchChain(client.chain.id)}>
+            Switch to Base
+          </Button>
         </div>
       </div>
     );

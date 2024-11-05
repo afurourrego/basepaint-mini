@@ -1,3 +1,4 @@
+import { base } from "viem/chains";
 import "./style.css";
 import { createWalletClient, custom, publicActions } from "viem";
 
@@ -10,7 +11,6 @@ if (!(window as any).ethereum) {
 }
 
 export const client = createWalletClient({
+  chain: base,
   transport: custom((window as any).ethereum),
 }).extend(publicActions);
-
-export const publicClient = client;
