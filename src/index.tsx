@@ -230,6 +230,20 @@ function useWallet() {
   return { address, connect };
 }
 
+function useCurrentChainId() {
+  const [chain, setChain] = useState<number | null>(null);
+
+  useEffect(() => {
+    client.getChainId().then(setChain);
+  }, []);
+
+  const switchChain = useCallback((id: number) => {
+    client.switchChain({ id }).then(() => setChain(id));
+  }, []);
+
+  return { chain, switchChain };
+}
+
 function useTheme(day: number) {
   return usePromise(() => fetchTheme(day), [day]);
 }
@@ -255,7 +269,20 @@ export function App() {
   if (!address) {
     return (
       <div className="fullscreen">
-        <Button onClick={connect}>Connect Wallet</Button>
+        <div className="menu">
+          <Button onClick={connect}>Connect Wallet</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const { chain, switchChain } = useCurrentChainId();
+  if (chain !== base.id) {
+    return (
+      <div className="fullscreen">
+        <div className="menu">
+          <Button onClick={() => switchChain(base.id)}>Switch to Base</Button>
+        </div>
       </div>
     );
   }
