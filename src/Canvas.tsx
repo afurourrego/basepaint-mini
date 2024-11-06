@@ -7,13 +7,16 @@ import {
   MagnifyingGlassPlus,
   Trash,
 } from "./icons";
-import { BASEPAINT_ADDRESS } from "./constants";
+import { BASEPAINT_ADDRESS, BRUSH_ADDRESS } from "./constants";
 import { Address, parseAbi } from "viem";
 import { Client } from ".";
+import Countdown, { getSecondsLeft } from "./Countdown";
 
 function Canvas({
   client,
   day,
+  epochDuration,
+  startedAt,
   theme,
   palette,
   size,
@@ -23,6 +26,8 @@ function Canvas({
 }: {
   client: Client;
   day: number;
+  epochDuration: bigint;
+  startedAt: bigint;
   theme: string;
   palette: string[];
   size: number;
@@ -52,7 +57,40 @@ function Canvas({
 
     const brushId = BigInt(response);
 
-    client.writeContract({
+    const owner = await client.readContract({
+      account: address,
+      abi: parseAbi(["function ownerOf(uint256) returns (address)"]),
+      functionName: "ownerOf",
+      address: BRUSH_ADDRESS,
+      args: [brushId],
+    });
+
+    if (owner !== address) {
+      alert("You do not own this brush, the owner is " + owner);
+      return;
+    }
+
+    const strength = await client.readContract({
+      account: address,
+      abi: parseAbi(["function strengths(uint256) returns (uint256)"]),
+      functionName: "strengths",
+      address: BRUSH_ADDRESS,
+      args: [brushId],
+    });
+
+    const secondsToFinalize = 30 * 60;
+    const secondsLeft = getSecondsLeft({
+      timestamp: BigInt(Date.now()) / 1000n,
+      startedAt,
+      epochDuration,
+    });
+
+    if (strength < 100_000n && secondsLeft < secondsToFinalize) {
+      alert(`The last ${secondsToFinalize} seconds are for cleanup crew only.`);
+      return;
+    }
+
+    await client.writeContract({
       account: address,
       abi: parseAbi([
         "function paint(uint256 day, uint256 tokenId, bytes calldata pixels)",
@@ -129,6 +167,8 @@ function Canvas({
     <div className="main">
       <Toolbar
         day={day}
+        startedAt={startedAt}
+        epochDuration={epochDuration}
         theme={theme}
         colorIndex={state.colorIndex}
         palette={palette}
@@ -155,6 +195,8 @@ function Canvas({
 
 function Toolbar({
   day,
+  startedAt,
+  epochDuration,
   theme,
   palette,
   colorIndex,
@@ -162,6 +204,8 @@ function Toolbar({
   onSave,
 }: {
   day: number;
+  startedAt: bigint;
+  epochDuration: bigint;
   theme: string;
   palette: string[];
   colorIndex: number;
@@ -171,7 +215,13 @@ function Toolbar({
   return (
     <div className="toolbar">
       <div className="theme-name">
-        Day {day}: {theme}
+        <div>
+          Day {day}: {theme}
+        </div>
+        <div className="countdown">
+          Canvas flips in{" "}
+          <Countdown startedAt={startedAt} epochDuration={epochDuration} />
+        </div>
       </div>
       <button onClick={() => onSave()}>
         <ArrowUpCircle />

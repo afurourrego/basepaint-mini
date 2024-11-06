@@ -39,6 +39,12 @@ a {
 	font-weight: medium;
 }
 
+.countdown {
+	font-size: 12px;
+	opacity: 0.5;
+	font-variant: tabular-nums;
+}
+
 .color-button {
 	display: inline-block;
 	border-width: 3px;

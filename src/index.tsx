@@ -41,16 +41,6 @@ function useClient() {
   return client;
 }
 
-function useNow() {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return now;
-}
-
 function usePromise<T>(promise: () => Promise<T>, deps: any[] = []): T | null {
   const [value, setValue] = useState<T | null>(null);
 
@@ -160,16 +150,38 @@ async function fetchBrushes(client: Client, address: Address) {
 }
 
 function useToday(client: Client) {
-  const now = useNow();
   const info = usePromise(() => initialFetch(client), [client]);
+  const [day, setDay] = useState<number | null>(null);
 
   if (!info) {
     return null;
   }
 
-  return Number(
-    (BigInt(now) / 1000n - info.startedAt) / info.epochDuration + 1n
-  );
+  useEffect(() => {
+    function computeDay() {
+      if (!info) {
+        return;
+      }
+
+      setDay(
+        Number(
+          (BigInt(Date.now()) / 1000n - info.startedAt) / info.epochDuration +
+            1n
+        )
+      );
+    }
+
+    computeDay(); // Initial value
+
+    const interval = setInterval(computeDay, 1000);
+    return () => clearInterval(interval);
+  }, [info]);
+
+  if (!day) {
+    return null;
+  }
+
+  return { day, ...info };
 }
 
 async function getStrokesFromLogs(
@@ -386,10 +398,10 @@ export function App() {
   }
 
   if (ui === "withdraw") {
-    return <Withdraw client={client} today={today} address={address} />;
+    return <Withdraw client={client} today={today.day} address={address} />;
   }
 
-  let day = ui === "mint" ? today - 1 : today;
+  let day = ui === "mint" ? today.day - 1 : today.day;
 
   const theme = useTheme(client, day);
   if (!theme) {
@@ -429,6 +441,8 @@ export function App() {
       address={address}
       brushes={brushes ?? []}
       day={day}
+      epochDuration={today.epochDuration}
+      startedAt={today.startedAt}
       theme={theme.theme}
       palette={theme.palette}
       size={theme.size}
