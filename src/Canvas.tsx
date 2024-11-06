@@ -47,6 +47,11 @@ function Canvas({
       await client.switchChain(client.chain);
     }
 
+    const agreedToRules = confirm(RULES);
+    if (!agreedToRules) {
+      return;
+    }
+
     const response = prompt(
       "What brush token ID do you want to use?",
       brushes[0]?.id.toString() ?? "0"
@@ -336,5 +341,16 @@ function reducer(state: State, action: Action): State {
       return state;
   }
 }
+
+const RULES = `\
+BasePaint Rules:
+
+😊 Be Kind: Be patient with each other. We're all here to learn and create together.
+🖌️ Be Original: Don't copy another artist's pixel artwork.
+🥸 Be Yourself: One brush per painter. Use your brush invites on new artists!
+🧠 Be Creative: Help others but don't trace or spam unnecessary pixels (blobs, checkers or borders).
+⚠️ Keep It Clean: No QR Codes, project names, logos, offensive symbols, etc.
+🎨 CC0: Your artwork on this canvas will be released under a CC0 license in the public domain.
+`;
 
 export default memo(Canvas);
