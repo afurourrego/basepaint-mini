@@ -6,6 +6,8 @@ import {
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
   Trash,
+  HandIcon,
+  PencilIcon,
 } from "./icons";
 import { BASEPAINT_ADDRESS, BRUSH_ADDRESS } from "./constants";
 import { Address, parseAbi } from "viem";
@@ -179,10 +181,42 @@ function Canvas({
         palette={palette}
         dispatch={dispatch}
         onSave={save}
+        drawMode={state.drawMode}
       />
       <div className="container">
         <canvas
           ref={canvasRef}
+          onTouchStart={(e) => {
+            if (state.drawMode) {
+              e.preventDefault();
+              const touch = e.touches[0];
+              const fakeEvent = {
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                currentTarget: e.currentTarget,
+                button: 0,
+              };
+              dispatch({ type: "down", where: locate(fakeEvent as any), erase: false });
+            }
+          }}
+          onTouchMove={(e) => {
+            if (state.drawMode) {
+              e.preventDefault();
+              const touch = e.touches[0];
+              const fakeEvent = {
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                currentTarget: e.currentTarget,
+              };
+              dispatch({ type: "move", where: locate(fakeEvent as any) });
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (state.drawMode) {
+              e.preventDefault();
+              dispatch({ type: "up" });
+            }
+          }}
           onMouseDown={(e) =>
             dispatch({ type: "down", where: locate(e), erase: e.button === 2 })
           }
@@ -192,6 +226,9 @@ function Canvas({
           onContextMenu={(e) => e.preventDefault()}
           width={size * PIXEL_SIZE}
           height={size * PIXEL_SIZE}
+          style={{
+            touchAction: state.drawMode ? "none" : "auto"
+          }}
         />
       </div>
     </div>
@@ -207,6 +244,7 @@ function Toolbar({
   colorIndex,
   dispatch,
   onSave,
+  drawMode,
 }: {
   day: number;
   startedAt: bigint;
@@ -216,6 +254,7 @@ function Toolbar({
   colorIndex: number;
   dispatch: (action: Action) => void;
   onSave: () => void;
+  drawMode: boolean;
 }) {
   return (
     <div className="toolbar">
@@ -239,6 +278,9 @@ function Toolbar({
       </button>
       <button onClick={() => dispatch({ type: "zoom-out" })}>
         <MagnifyingGlassMinus />
+      </button>
+      <button onClick={() => dispatch({ type: "toggle-draw-mode" })}>
+        {drawMode ? <PencilIcon /> : <HandIcon />}
       </button>
       <div>
         {palette.map((color, index) => (
@@ -266,6 +308,7 @@ type State = {
   pixelSize: number;
   colorIndex: number;
   pixels: Pixels;
+  drawMode: boolean;
 };
 
 const initialState: State = {
@@ -275,6 +318,7 @@ const initialState: State = {
   pixelSize: 3,
   colorIndex: 0,
   pixels: new Pixels(),
+  drawMode: false,
 };
 
 type Action =
@@ -286,7 +330,8 @@ type Action =
   | { type: "leave" }
   | { type: "zoom-in" }
   | { type: "zoom-out" }
-  | { type: "reset" };
+  | { type: "reset" }
+  | { type: "toggle-draw-mode" };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -336,6 +381,9 @@ function reducer(state: State, action: Action): State {
 
     case "zoom-out":
       return { ...state, pixelSize: Math.max(1, state.pixelSize - 1) };
+
+    case "toggle-draw-mode":
+      return { ...state, drawMode: !state.drawMode };
 
     default:
       return state;
