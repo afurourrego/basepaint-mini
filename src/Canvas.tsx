@@ -279,7 +279,10 @@ function Toolbar({
       <button onClick={() => dispatch({ type: "zoom-out" })}>
         <MagnifyingGlassMinus />
       </button>
-      <button onClick={() => dispatch({ type: "toggle-draw-mode" })}>
+      <button 
+        onClick={() => dispatch({ type: "toggle-draw-mode" })}
+        className="draw-mode-toggle"
+      >
         {drawMode ? <PencilIcon /> : <HandIcon />}
       </button>
       <div>
