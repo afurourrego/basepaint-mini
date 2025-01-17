@@ -6,6 +6,8 @@ import {
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
   Trash,
+  HandIcon,
+  PencilIcon,
 } from "./icons";
 import { BASEPAINT_ADDRESS, BRUSH_ADDRESS } from "./constants";
 import { Address, parseAbi } from "viem";
@@ -146,16 +148,20 @@ function Canvas({
     }
   }, [background, palette, PIXEL_SIZE, size, state.pixels]);
 
-  const locate = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const locate = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const canvasSize = rect.width;
+
+    // Determine coordinates based on event type
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
     // Calculate the actual size of each pixel
     const actualPixelSize = canvasSize / size;
 
     // Calculate the position relative to the canvas
-    const relativeX = e.clientX - rect.left;
-    const relativeY = e.clientY - rect.top;
+    const relativeX = clientX - rect.left;
+    const relativeY = clientY - rect.top;
 
     // Convert to grid coordinates
     const x = Math.floor(relativeX / actualPixelSize);
@@ -179,10 +185,29 @@ function Canvas({
         palette={palette}
         dispatch={dispatch}
         onSave={save}
+        drawMode={state.drawMode}
       />
       <div className="container">
         <canvas
           ref={canvasRef}
+          onTouchStart={(e) => {
+            if (state.drawMode) {
+              e.preventDefault();
+              dispatch({ type: "down", where: locate(e), erase: false });
+            }
+          }}
+          onTouchMove={(e) => {
+            if (state.drawMode) {
+              e.preventDefault();
+              dispatch({ type: "move", where: locate(e) });
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (state.drawMode) {
+              e.preventDefault();
+              dispatch({ type: "up" });
+            }
+          }}
           onMouseDown={(e) =>
             dispatch({ type: "down", where: locate(e), erase: e.button === 2 })
           }
@@ -192,6 +217,9 @@ function Canvas({
           onContextMenu={(e) => e.preventDefault()}
           width={size * PIXEL_SIZE}
           height={size * PIXEL_SIZE}
+          style={{
+            touchAction: state.drawMode ? "none" : "auto"
+          }}
         />
       </div>
     </div>
@@ -207,6 +235,7 @@ function Toolbar({
   colorIndex,
   dispatch,
   onSave,
+  drawMode,
 }: {
   day: number;
   startedAt: bigint;
@@ -216,6 +245,7 @@ function Toolbar({
   colorIndex: number;
   dispatch: (action: Action) => void;
   onSave: () => void;
+  drawMode: boolean;
 }) {
   return (
     <div className="toolbar">
@@ -239,6 +269,12 @@ function Toolbar({
       </button>
       <button onClick={() => dispatch({ type: "zoom-out" })}>
         <MagnifyingGlassMinus />
+      </button>
+      <button 
+        onClick={() => dispatch({ type: "toggle-draw-mode" })}
+        className="draw-mode-toggle"
+      >
+        {drawMode ? <PencilIcon /> : <HandIcon />}
       </button>
       <div>
         {palette.map((color, index) => (
@@ -266,6 +302,7 @@ type State = {
   pixelSize: number;
   colorIndex: number;
   pixels: Pixels;
+  drawMode: boolean;
 };
 
 const initialState: State = {
@@ -275,6 +312,7 @@ const initialState: State = {
   pixelSize: 3,
   colorIndex: 0,
   pixels: new Pixels(),
+  drawMode: false,
 };
 
 type Action =
@@ -286,7 +324,8 @@ type Action =
   | { type: "leave" }
   | { type: "zoom-in" }
   | { type: "zoom-out" }
-  | { type: "reset" };
+  | { type: "reset" }
+  | { type: "toggle-draw-mode" };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -336,6 +375,9 @@ function reducer(state: State, action: Action): State {
 
     case "zoom-out":
       return { ...state, pixelSize: Math.max(1, state.pixelSize - 1) };
+
+    case "toggle-draw-mode":
+      return { ...state, drawMode: !state.drawMode };
 
     default:
       return state;

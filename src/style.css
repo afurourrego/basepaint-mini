@@ -93,3 +93,13 @@ button.big {
 	font-size: 1.5rem;
 	cursor: pointer;
 }
+
+.draw-mode-toggle {
+	display: none !important;
+}
+
+@media (hover: none) and (pointer: coarse) {
+	.draw-mode-toggle {
+		display: inline-flex !important;
+	}
+}
