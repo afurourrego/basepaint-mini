@@ -148,16 +148,20 @@ function Canvas({
     }
   }, [background, palette, PIXEL_SIZE, size, state.pixels]);
 
-  const locate = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const locate = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const canvasSize = rect.width;
+
+    // Determine coordinates based on event type
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
     // Calculate the actual size of each pixel
     const actualPixelSize = canvasSize / size;
 
     // Calculate the position relative to the canvas
-    const relativeX = e.clientX - rect.left;
-    const relativeY = e.clientY - rect.top;
+    const relativeX = clientX - rect.left;
+    const relativeY = clientY - rect.top;
 
     // Convert to grid coordinates
     const x = Math.floor(relativeX / actualPixelSize);
@@ -189,26 +193,13 @@ function Canvas({
           onTouchStart={(e) => {
             if (state.drawMode) {
               e.preventDefault();
-              const touch = e.touches[0];
-              const fakeEvent = {
-                clientX: touch.clientX,
-                clientY: touch.clientY,
-                currentTarget: e.currentTarget,
-                button: 0,
-              };
-              dispatch({ type: "down", where: locate(fakeEvent as any), erase: false });
+              dispatch({ type: "down", where: locate(e), erase: false });
             }
           }}
           onTouchMove={(e) => {
             if (state.drawMode) {
               e.preventDefault();
-              const touch = e.touches[0];
-              const fakeEvent = {
-                clientX: touch.clientX,
-                clientY: touch.clientY,
-                currentTarget: e.currentTarget,
-              };
-              dispatch({ type: "move", where: locate(fakeEvent as any) });
+              dispatch({ type: "move", where: locate(e) });
             }
           }}
           onTouchEnd={(e) => {
