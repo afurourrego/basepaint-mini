@@ -8,6 +8,7 @@ import {
   Trash,
   HandIcon,
   PencilIcon,
+  EraserIcon,
 } from "./icons";
 import { BASEPAINT_ADDRESS, BRUSH_ADDRESS } from "./constants";
 import { Address, parseAbi } from "viem";
@@ -186,6 +187,7 @@ function Canvas({
         dispatch={dispatch}
         onSave={save}
         drawMode={state.drawMode}
+        eraserMode={state.eraserMode}
       />
       <div className="container">
         <canvas
@@ -193,7 +195,7 @@ function Canvas({
           onTouchStart={(e) => {
             if (state.drawMode) {
               e.preventDefault();
-              dispatch({ type: "down", where: locate(e), erase: false });
+              dispatch({ type: "down", where: locate(e), erase: state.eraserMode });
             }
           }}
           onTouchMove={(e) => {
@@ -236,6 +238,7 @@ function Toolbar({
   dispatch,
   onSave,
   drawMode,
+  eraserMode,
 }: {
   day: number;
   startedAt: bigint;
@@ -246,6 +249,7 @@ function Toolbar({
   dispatch: (action: Action) => void;
   onSave: () => void;
   drawMode: boolean;
+  eraserMode: boolean;
 }) {
   return (
     <div className="toolbar">
@@ -276,6 +280,13 @@ function Toolbar({
       >
         {drawMode ? <PencilIcon /> : <HandIcon />}
       </button>
+      <button 
+        onClick={() => dispatch({ type: "toggle-eraser-mode" })}
+        className={`eraser-mode-toggle ${eraserMode ? 'active' : ''}`}
+        style={{ display: drawMode ? 'block' : 'none' }}
+      >
+        <EraserIcon />
+      </button>
       <div>
         {palette.map((color, index) => (
           <button
@@ -303,6 +314,7 @@ type State = {
   colorIndex: number;
   pixels: Pixels;
   drawMode: boolean;
+  eraserMode: boolean;
 };
 
 const initialState: State = {
@@ -313,6 +325,7 @@ const initialState: State = {
   colorIndex: 0,
   pixels: new Pixels(),
   drawMode: false,
+  eraserMode: false,
 };
 
 type Action =
@@ -325,7 +338,8 @@ type Action =
   | { type: "zoom-in" }
   | { type: "zoom-out" }
   | { type: "reset" }
-  | { type: "toggle-draw-mode" };
+  | { type: "toggle-draw-mode" }
+  | { type: "toggle-eraser-mode" };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -378,6 +392,9 @@ function reducer(state: State, action: Action): State {
 
     case "toggle-draw-mode":
       return { ...state, drawMode: !state.drawMode };
+
+    case "toggle-eraser-mode":
+      return { ...state, eraserMode: !state.eraserMode };
 
     default:
       return state;
