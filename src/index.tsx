@@ -19,26 +19,48 @@ import Withdraw from "./Withdraw";
 import Mint from "./Mint";
 import Button from "./Button";
 import { base } from "viem/chains";
+import { UniversalProvider } from "@walletconnect/universal-provider";
 
 export type Client = NonNullable<ReturnType<typeof useClient>>;
 
 function useClient() {
   const [ethereum] = useState(() => (window as any).ethereum);
+  const [wcProvider, setWcProvider] = useState<any>(null);
 
-  if (!ethereum) {
-    return null;
-  }
-
-  const client = useMemo(
-    () =>
-      createWalletClient({
+  const client = useMemo(() => {
+    if (ethereum) {
+      return createWalletClient({
         chain: base,
         transport: custom(ethereum),
-      }).extend(publicActions),
-    [ethereum]
-  );
+      }).extend(publicActions);
+    } else if (wcProvider) {
+      return createWalletClient({
+        chain: base,
+        transport: custom(wcProvider),
+      }).extend(publicActions);
+    }
+    return null;
+  }, [ethereum, wcProvider]);
 
-  return client;
+  useEffect(() => {
+    if (!ethereum && !wcProvider) {
+      UniversalProvider.init({
+        projectId: "TU_PROJECT_ID_AQUI", // Reemplaza con tu projectId de WalletConnect
+        metadata: {
+          name: "BasePaint Mini",
+          description: "A minimal BasePaint dApp",
+          url: "https://your-dapp-url.com", // Reemplaza con tu URL
+          icons: [],
+        },
+      })
+        .then((provider) => {
+          setWcProvider(provider);
+        })
+        .catch((error) => console.error("Failed to init WalletConnect:", error));
+    }
+  }, [ethereum, wcProvider]);
+
+  return { client, wcProvider };
 }
 
 function usePromise<T>(promise: () => Promise<T>, deps: any[] = []): T | null {
@@ -277,13 +299,30 @@ function usePaintedPixels(client: Client, day: number) {
   return pixels;
 }
 
-function useWallet(client: Client) {
+function useWallet(client: Client, wcProvider: any) {
   const [address, setAddress] = useState<Address | null>(null);
+
   const connect = useCallback(() => {
     client
       .requestAddresses()
-      .then((addresses) => addresses.length > 0 && setAddress(addresses[0]));
+      .then((addresses) => addresses.length > 0 && setAddress(addresses[0]))
+      .catch((error) => console.error("Failed to connect wallet:", error));
   }, [client]);
+
+  const connectWalletConnect = useCallback(() => {
+    if (wcProvider) {
+      wcProvider
+        .connect({
+          chains: [base.id],
+        })
+        .then((session) => {
+          const accounts = session.namespaces.evm.accounts;
+          const address = accounts[0].split(":")[2] as Address;
+          setAddress(address);
+        })
+        .catch((error) => console.error("WalletConnect error:", error));
+    }
+  }, [wcProvider]);
 
   useEffect(() => {
     client
@@ -291,7 +330,7 @@ function useWallet(client: Client) {
       .then((addresses) => addresses.length > 0 && setAddress(addresses[0]));
   }, [client]);
 
-  return { address, connect };
+  return { address, connect, connectWalletConnect };
 }
 
 function useCurrentChainId(client: Client) {
@@ -341,23 +380,32 @@ function usePrice(client: Client) {
 }
 
 export function App() {
-  const client = useClient();
+  const { client, wcProvider } = useClient();
+
   if (!client) {
     return (
       <div className="fullscreen">
         <BasePaintHero />
-        Please install MetaMask or similar Ethereum wallet extension.
+        <p>Loading wallet provider...</p>
       </div>
     );
   }
 
-  const { address, connect } = useWallet(client);
+  const { address, connect, connectWalletConnect } = useWallet(client, wcProvider);
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
   if (!address) {
     return (
       <div className="fullscreen">
         <BasePaintHero />
         <div className="menu">
           <Button onClick={connect}>Connect Wallet</Button>
+          {isMobile && (
+            <Button onClick={connectWalletConnect}>Connect with WalletConnect</Button>
+          )}
+          {wcProvider?.session && isMobile && (
+            <p>Scan this URI with your wallet: {wcProvider.uri}</p>
+          )}
         </div>
       </div>
     );
@@ -477,7 +525,7 @@ function BasePaintHero() {
         <a href="https://basepaint.xyz" target="_blank" rel="noreferrer">
           BasePaint
         </a>{" "}
-        dApp with zero external dependencies.
+        dApp with minimal dependencies.
       </p>
       <p>
         Press{" "}

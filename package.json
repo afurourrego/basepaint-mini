@@ -7,6 +7,7 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
+		"@walletconnect/universal-provider": "^2.19.2",
 		"preact": "^10.22.1",
 		"viem": "^2.21.39",
 		"vite-plugin-singlefile": "^2.0.2"
